@@ -1,17 +1,18 @@
-import streamlit as st
 import sys
 from pathlib import Path
+
+import streamlit as st
 
 # Add the project root to the python path so 'src' can be found
 root_path = Path(__file__).resolve().parent.parent
 sys.path.append(str(root_path))
 
-import pandas as pd
-import numpy as np
 import joblib
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
-import shap
+
 from src.breast_cancer_ml.config.settings import settings
 
 # Page configuration
@@ -111,8 +112,9 @@ st.sidebar.warning(
     "clinical or treatment decisions."
 )
 
+@st.cache_resource
 def load_model(group, model_type="survival"):
-    """Loads the trained model."""
+    """Loads the trained model pipeline."""
     if model_type == "survival":
         path = Path(f"models/survival/{group}/random_survival_forest.joblib")
     else:
@@ -122,6 +124,7 @@ def load_model(group, model_type="survival"):
         return None
     return joblib.load(path)
 
+@st.cache_resource
 def load_label_encoder(group):
     """Loads the label encoder for classification subtypes."""
     path = Path(f"models/classification/{group}/label_encoder.joblib")
@@ -129,40 +132,109 @@ def load_label_encoder(group):
         return None
     return joblib.load(path)
 
-def get_treatment_recommendation(subtype, risk_score):
-    """
-    Provides a simplified clinical treatment suggestion based on
-    molecular subtype and risk level.
-    """
-    # Define risk level for the logic
-    is_high_risk = risk_score > 1.5
+@st.cache_data
+def get_training_reference_risks(group):
+    """Computes and caches reference risk distribution on the training cohort."""
+    model = load_model(group, "survival")
+    if model is None:
+        return None
+    train_path = Path(f"data/processed/train_{group}/X.csv")
+    if not train_path.exists():
+        return None
+    train_df = pd.read_csv(train_path)
+    return model.predict(train_df)
 
-    # Use normalized keys that match the short-hand labels (LumA, LumB, etc.)
-    recommendations = {
-        "luma": {
-            "Low": "Standard Endocrine Therapy (Hormone therapy) and regular monitoring. Low risk of recurrence.",
-            "High": "Combination of Endocrine Therapy and potentially adjuvant chemotherapy due to elevated risk."
+@st.cache_data
+def load_test_cohort(group):
+    """Loads test feature matrix and associated ground-truth outcomes."""
+    x_path = Path(f"data/processed/test_{group}/X.csv")
+    y_surv_path = Path(f"data/processed/test_{group}/y_survival.csv")
+    y_sub_path = Path(f"data/processed/test_{group}/y_subtype.csv")
+    if not (x_path.exists() and y_surv_path.exists() and y_sub_path.exists()):
+        return None, None, None
+    X = pd.read_csv(x_path)
+    y_surv = pd.read_csv(y_surv_path)
+    y_sub = pd.read_csv(y_sub_path)
+    return X, y_surv, y_sub
+
+@st.cache_data
+def get_training_feature_medians(group="clinical"):
+    """Returns medians of training features for reference benchmarking."""
+    train_path = Path(f"data/processed/train_{group}/X.csv")
+    if not train_path.exists():
+        return {}
+    df = pd.read_csv(train_path)
+    return df.median().to_dict()
+
+def get_biological_subtype_info(subtype):
+    """
+    Returns objective biological characteristics for breast cancer molecular subtypes.
+    Strictly educational and research-oriented — no treatment recommendations.
+    """
+    subtype_clean = str(subtype).strip()
+    lookup = {
+        "luma": "LumA",
+        "luminal a": "LumA",
+        "lumb": "LumB",
+        "luminal b": "LumB",
+        "her2": "Her2",
+        "basal": "Basal",
+        "claudin-low": "claudin-low",
+        "normal": "Normal",
+        "nc": "NC",
+    }
+    key = lookup.get(subtype_clean.lower(), subtype_clean)
+
+    info_dict = {
+        "LumA": {
+            "name": "Luminal A",
+            "biology": "Estrogen receptor-positive (ER+) and progesterone receptor-positive (PR+), HER2-negative with low Ki-67 proliferation index.",
+            "prognosis": "Generally exhibits favorable long-term disease-specific survival in historical cohorts.",
+            "biomarkers": "High ESR1, PGR, GATA3; low MKI67 proliferation signature."
         },
-        "lumb": {
-            "Low": "Endocrine Therapy with closer monitoring of biomarkers.",
-            "High": "Aggressive combination of Chemotherapy and Endocrine Therapy is typically recommended."
+        "LumB": {
+            "name": "Luminal B",
+            "biology": "Estrogen receptor-positive (ER+), with higher histological grade or proliferation markers, and variable HER2 status.",
+            "prognosis": "Higher risk of distant relapse compared to Luminal A, driven by active cell-cycle proliferation.",
+            "biomarkers": "ESR1+, elevated AURKA and MKI67 expression; variable ERBB2 amplification."
         },
-        "her2": {
-            "Low": "Targeted anti-HER2 therapy (e.g., Trastuzumab) and surgery.",
-            "High": "Intensive Targeted Therapy combined with systemic Chemotherapy."
+        "Her2": {
+            "name": "HER2-Enriched",
+            "biology": "Overexpression and amplification of the ERBB2 (HER2) oncogene and adjacent 17q amplicon genes.",
+            "prognosis": "Aggressive baseline natural history with high proliferative activity.",
+            "biomarkers": "Elevated ERBB2, GRB7; typically ER-negative and PR-negative."
         },
-        "basal": {
-            "Low": "Systemic Chemotherapy. Basal-like tumors are generally more aggressive even at lower relative risk.",
-            "High": "Aggressive multi-modal therapy including high-dose Chemotherapy and surgical intervention."
+        "Basal": {
+            "name": "Basal-Like",
+            "biology": "Frequently exhibits the triple-negative clinical phenotype (ER-, PR-, HER2-), prominent genomic instability, and high TP53 mutation rate.",
+            "prognosis": "Associated with earlier relapse kinetics and high mitotic indices in benchmark studies.",
+            "biomarkers": "High basal cytokeratins (KRT5, KRT14), EGFR overexpression, frequent TP53 alterations."
+        },
+        "claudin-low": {
+            "name": "Claudin-Low",
+            "biology": "Characterized by reduced expression of cell-cell adhesion and tight junction genes (CLDN3, CLDN4, CLDN7, CDH1) with mesenchymal and stem-like characteristics.",
+            "prognosis": "Intermediate-to-poor prognosis accompanied by pronounced immune lymphocytic infiltration.",
+            "biomarkers": "Downregulated claudins and E-cadherin; enriched for EMT and immune signatures."
+        },
+        "Normal": {
+            "name": "Normal-Like",
+            "biology": "Expression profile mirroring non-malignant breast parenchyma and adipose tissue.",
+            "prognosis": "Intermediate trajectory; frequently reflects tumor samples with substantial non-neoplastic stromal content.",
+            "biomarkers": "Enriched for adipose and non-epithelial normal mammary tissue signatures."
+        },
+        "NC": {
+            "name": "Unclassified (NC)",
+            "biology": "Samples that did not attain definitive confidence thresholds in PAM50 centroid assignment.",
+            "prognosis": "Heterogeneous molecular profile across cluster boundaries.",
+            "biomarkers": "Mixed expression characteristics."
         }
     }
-
-    # Normalize the input subtype: lowercase and remove non-alphanumeric chars
-    # This converts "LumB" -> "lumb", "Luminal B" -> "luminalb", "Basal-like" -> "basallike"
-    normalized_subtype = subtype.lower().replace(" ", "").replace("-", "").replace("inal", "")
-
-    risk_label = "High" if is_high_risk else "Low"
-    return recommendations.get(normalized_subtype, {}).get(risk_label, "Consult a multidisciplinary tumor board for personalized treatment planning.")
+    return info_dict.get(key, {
+        "name": subtype_clean,
+        "biology": "Molecular subtype categorized by PAM50 gene expression profiling.",
+        "prognosis": "Refer to METABRIC cohort survival benchmarks.",
+        "biomarkers": "Multi-gene PAM50 expression panel."
+    })
 
 # --- Sidebar Navigation ---
 st.sidebar.title("🎗️ Research Journey")
@@ -269,7 +341,7 @@ elif page == "Comparing Approaches":
             # Use a custom function to ensure text is black and background is a soft green
             def highlight_max_custom(s):
                 is_max = s == s.max()
-                return [f'background-color: #c3e6cb; color: black;' if v else '' for v in is_max]
+                return ['background-color: #c3e6cb; color: black;' if v else '' for v in is_max]
 
             st.dataframe(df.style.apply(highlight_max_custom, subset=['test_cindex']), use_container_width=True)
 
@@ -312,7 +384,7 @@ elif page == "Comparing Approaches":
                 # Use a custom function to ensure text is black and background is a soft green
                 def highlight_max_custom(s):
                     is_max = s == s.max()
-                    return [f'background-color: #c3e6cb; color: black;' if v else '' for v in is_max]
+                    return ['background-color: #c3e6cb; color: black;' if v else '' for v in is_max]
 
                 st.dataframe(df.style.apply(highlight_max_custom, subset=['weighted_f1']), use_container_width=True)
 
@@ -323,201 +395,299 @@ elif page == "Comparing Approaches":
                 st.pyplot(plt)
             else:
                 st.info("Classification metrics not found. Please run the pipeline.")
-        except Exception as e:
+        except (FileNotFoundError, KeyError, ValueError, OSError) as e:
             st.error(f"Error loading classification metrics: {e}")
 
 # --- Page: Interactive Prediction ---
 elif page == "Interactive Prediction":
     st.title("🧪 AI Prediction Lab")
-    st.markdown("Experience the models yourself. Select a model arm and simulate patient data.")
+    st.markdown(
+        "Explore model predictions across **Clinical**, **Genomic**, and **Integrated** feature arms. "
+        "Benchmark real patient cases from the test cohort against observed outcomes, or simulate clinical parameters."
+    )
 
-    mode = st.selectbox("What would you like to predict?", ["Survival Risk", "Molecular Subtype"])
+    st.markdown("""
+        <div style="background-color: rgba(255, 75, 75, 0.08); border-left: 4px solid #ff4b4b; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 0.95rem;">
+                <b>🔬 Research Benchmark Tool:</b> Risk scores represent relative hazard rankings from survival models; subtype predictions represent multi-class PAM50 probabilities. This tool does not provide clinical diagnoses or treatment regimens.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1, 2])
+    from scipy.stats import percentileofscore
+
+    task_col1, task_col2 = st.columns(2)
+    with task_col1:
+        mode = st.radio(
+            "Select Prediction Task",
+            ["Prognostic Survival Risk", "Molecular Subtype Classification"],
+            horizontal=True
+        )
+    with task_col2:
+        group = st.selectbox(
+            "Select Feature Complexity Arm",
+            ["clinical", "genomic", "integrated"],
+            format_func=lambda x: {
+                "clinical": "Clinical Arm (Patient demographics & histopathology)",
+                "genomic": "Genomic Arm (mRNA expression & somatic mutations)",
+                "integrated": "Integrated Arm (Clinical + Genomic + Mutations)"
+            }[x]
+        )
+
+    # Input method selection
+    input_method = st.radio(
+        "Patient Profile Source",
+        ["Benchmark Test Cohort Case (All Arms)", "Custom Clinical Parameter Simulation (Clinical Arm Only)"],
+        horizontal=True
+    )
+
+    col1, col2 = st.columns([1, 1], gap="large")
+
+    sample_df = None
+    patient_info = {}
+    is_simulation = False
 
     with col1:
-        st.subheader("Patient Profile")
+        st.subheader("Patient Input Profile")
 
-        # Use a container for a cleaner look
-        with st.container():
-            group = st.selectbox("Choose Model Complexity", ["clinical", "genomic", "integrated"],
-                                 help="Clinical = Basic, Genomic = DNA-based, Integrated = Both")
-
-            if mode == "Survival Risk":
-                age = st.slider("Age at Diagnosis", 20, 90, 50)
-                tumor_size = st.slider("Tumor Size (mm)", 1, 100, 20)
-                stage = st.selectbox("Tumor Stage", ["I", "II", "III", "IV"])
+        if input_method == "Custom Clinical Parameter Simulation (Clinical Arm Only)":
+            if group != "clinical":
+                st.warning(
+                    f"⚠️ The **{group.capitalize()}** model arm requires 490+ high-dimensional gene expression vectors. "
+                    "Custom parameter simulation is available for the **Clinical** arm. "
+                    "Please switch to the **Clinical** arm above, or choose 'Benchmark Test Cohort Case' to test this arm."
+                )
             else:
-                st.info("🧬 For subtype prediction, the model analyzes genomic expression levels from the patient's sample.")
-                st.write("*(Input features for genomic models are complex high-dimensional vectors; for this demo, we use representative patient samples)*")
+                is_simulation = True
+                st.markdown("*Adjust clinical parameters to evaluate risk:*")
+                sim_age = st.slider("Age at Diagnosis (years)", min_value=20, max_value=95, value=60)
+                sim_size = st.slider("Tumor Size (mm)", min_value=1, max_value=150, value=25)
+                sim_grade = st.selectbox(
+                    "Neoplasm Histologic Grade",
+                    [1, 2, 3],
+                    format_func=lambda g: f"Grade {g} ({'Well' if g==1 else ('Moderately' if g==2 else 'Poorly')} differentiated)",
+                    index=1
+                )
+                sim_nodes = st.slider("Positive Lymph Nodes Examined", min_value=0, max_value=35, value=1)
+                sim_stage = st.selectbox(
+                    "Tumor Stage",
+                    [0, 1, 2, 3, 4],
+                    format_func=lambda s: f"Stage {s}",
+                    index=2
+                )
 
-            st.markdown("---")
-            predict_btn = st.button("🚀 Run AI Prediction", use_container_width=True)
+                c_opt1, c_opt2, c_opt3 = st.columns(3)
+                with c_opt1:
+                    sim_chemo = st.selectbox("Chemotherapy", ["No", "Yes"], index=0)
+                with c_opt2:
+                    sim_hormone = st.selectbox("Hormone Therapy", ["No", "Yes"], index=1)
+                with c_opt3:
+                    sim_radio = st.selectbox("Radiotherapy", ["No", "Yes"], index=1)
+
+                train_medians = get_training_feature_medians("clinical")
+                magea8_val = train_medians.get("magea8", -0.1313)
+
+                sample_df = pd.DataFrame([{
+                    "age_at_diagnosis": float(sim_age),
+                    "chemotherapy": 1.0 if sim_chemo == "Yes" else 0.0,
+                    "neoplasm_histologic_grade": float(sim_grade),
+                    "hormone_therapy": 1.0 if sim_hormone == "Yes" else 0.0,
+                    "lymph_nodes_examined_positive": float(sim_nodes),
+                    "radio_therapy": 1.0 if sim_radio == "Yes" else 0.0,
+                    "tumor_size": float(sim_size),
+                    "tumor_stage": float(sim_stage),
+                    "magea8": float(magea8_val)
+                }])
+
+                patient_info = {
+                    "Age": f"{sim_age} years",
+                    "Tumor Size": f"{sim_size} mm",
+                    "Grade": f"Grade {sim_grade}",
+                    "Positive Nodes": sim_nodes,
+                    "Stage": f"Stage {sim_stage}",
+                    "Chemotherapy": sim_chemo,
+                    "Hormone Therapy": sim_hormone,
+                    "Radiotherapy": sim_radio
+                }
+        else:
+            # Benchmark Test Case Selector
+            X_test, y_surv_test, y_sub_test = load_test_cohort(group)
+            if X_test is not None:
+                max_cases = len(X_test)
+                case_num = st.number_input(
+                    f"Select Patient Case (1 to {max_cases})",
+                    min_value=1,
+                    max_value=max_cases,
+                    value=1,
+                    step=1
+                )
+                case_idx = case_num - 1
+                sample_df = X_test.iloc[[case_idx]].copy()
+
+                # Also load clinical test data for displaying patient summary
+                X_clin_test, _, _ = load_test_cohort("clinical")
+                if X_clin_test is not None:
+                    clin_row = X_clin_test.iloc[case_idx]
+                    patient_info = {
+                        "Age": f"{clin_row['age_at_diagnosis']:.1f} years",
+                        "Tumor Size": f"{clin_row['tumor_size']:.1f} mm",
+                        "Histologic Grade": f"Grade {int(clin_row['neoplasm_histologic_grade'])}",
+                        "Positive Lymph Nodes": int(clin_row['lymph_nodes_examined_positive']),
+                        "Tumor Stage": f"Stage {int(clin_row['tumor_stage'])}",
+                        "Chemotherapy": "Yes" if clin_row['chemotherapy'] == 1 else "No",
+                        "Hormone Therapy": "Yes" if clin_row['hormone_therapy'] == 1 else "No",
+                        "Radiotherapy": "Yes" if clin_row['radio_therapy'] == 1 else "No"
+                    }
+
+                st.markdown(f"**Patient Case #{case_num} Clinical Profile:**")
+                summary_df = pd.DataFrame(list(patient_info.items()), columns=["Clinical Characteristic", "Patient Value"])
+                st.dataframe(summary_df, use_container_width=True, hide_index=True)
+
+                if y_surv_test is not None and y_sub_test is not None:
+                    months = y_surv_test.iloc[case_idx]["overall_survival_months"]
+                    event_code = y_surv_test.iloc[case_idx]["overall_survival"]
+                    status_str = "Living (Censored)" if event_code == 1 else "Deceased (Event Observed)"
+                    true_sub = y_sub_test.iloc[case_idx]["pam50_+_claudin-low_subtype"]
+
+                    st.markdown("**Recorded Clinical Outcome (Ground Truth):**")
+                    gt_col1, gt_col2 = st.columns(2)
+                    with gt_col1:
+                        st.metric("Follow-up Duration", f"{months:.1f} mos", status_str)
+                    with gt_col2:
+                        st.metric("Actual Subtype", true_sub)
+            else:
+                st.error("Test dataset files not found.")
 
     with col2:
-        st.subheader("Prediction Result")
-        if predict_btn:
-            # Create a professional-looking card for the result
-            st.markdown('<div class="research-card">', unsafe_allow_html=True)
+        st.subheader("Model Evaluation & Output")
+        if sample_df is not None:
+            if mode == "Prognostic Survival Risk":
+                surv_model = load_model(group, "survival")
+                train_ref_risks = get_training_reference_risks(group)
 
-            if mode == "Survival Risk":
-                model = load_model(group, "survival")
-                if model:
-                    X_processed = Path(f"data/processed/test_{group}/X.csv")
-                    if X_processed.exists():
-                        # FIX: Instead of always taking index [0], we pick a random patient
-                        # to simulate different outcomes in the demo.
-                        full_df = pd.read_csv(X_processed)
+                if surv_model is not None and train_ref_risks is not None:
+                    risk_score = float(surv_model.predict(sample_df)[0])
+                    pct = float(percentileofscore(train_ref_risks, risk_score))
 
-                        # For 'clinical' mode, we'll actually use the sliders to modify the patient
-                        if group == "clinical":
-                            sample_df = full_df.iloc[[0]].copy()
-                            # RESET all known risk factors to lowest possible to ensure sliders drive the result
-                            for col in sample_df.columns:
-                                if 'lymph' in col.lower() or 'positive' in col.lower():
-                                    sample_df[col] = 0
-                                if 'grade' in col.lower():
-                                    sample_df[col] = 1
-                                if 'age' in col.lower(): sample_df[col] = age
-                                if 'size' in col.lower(): sample_df[col] = tumor_size
-                                if 'stage' in col.lower(): sample_df[col] = 1 if stage == 'I' else (2 if stage == 'II' else (3 if stage == 'III' else 4))
-                        else:
-                            # For genomic/integrated, we pick a random patient to show variety
-                            import random
-                            random_idx = random.randint(0, len(full_df) - 1)
-                            sample_df = full_df.iloc[[random_idx]]
-                            st.caption(f"Simulating Patient Case #{random_idx + 1}")
+                    if pct < 33.33:
+                        risk_tier = "🟢 Low Risk Tier"
+                        badge_color = "#28a745"
+                    elif pct <= 66.67:
+                        risk_tier = "🟡 Moderate Risk Tier"
+                        badge_color = "#ffc107"
+                    else:
+                        risk_tier = "🔴 High Risk Tier"
+                        badge_color = "#dc3545"
 
-                        risk_score = model.predict(sample_df)[0]
-
-                        # --- FINAL FIX: Normalized Risk Scoring ---
-                        # Instead of absolute or simple relative, we map the score
-                        # based on the actual distribution of the dataset.
-                        all_risks = model.predict(full_df)
-                        min_risk = np.min(all_risks)
-                        max_risk = np.max(all_risks)
-
-                        # Normalize current score between 0 and 1
-                        normalized_score = (risk_score - min_risk) / (max_risk - min_risk) if max_risk != min_risk else 0.5
-
-                        # Modern Metric Layout
-                        st.markdown(f"""
+                    st.markdown(f"""
+                        <div class="research-card" style="border-top: 5px solid {badge_color};">
                             <div class="custom-metric">
-                                <p class="metric-label">Predicted Risk Score</p>
+                                <p class="metric-label">{group.capitalize()} Model Predicted Risk Score</p>
                                 <p class="metric-value">{risk_score:.4f}</p>
                             </div>
-                        """, unsafe_allow_html=True)
-
-                        # Use normalized score for the category labels
-                        if normalized_score < 0.20:
-                            category = "🟢 Low Risk"
-                            detail = "The patient is in the lowest risk tier of the study population."
-                        elif 0.20 <= normalized_score <= 0.45:
-                            category = "🟡 Moderate Risk"
-                            detail = "The patient has a moderate risk profile compared to others."
-                        else:
-                            category = "🔴 High Risk"
-                            detail = "The patient is in the highest risk tier of the study population."
-
-
-                        st.markdown(f'<div style="text-align: center; margin-top: 20px;"><h3 style="color: black;">Result: {category}</h3>></div>', unsafe_allow_html=True)
-                        st.markdown(f'<p style="color: #666; text-align: center; font-style: italic; margin-top: 10px;">{detail}</p>', unsafe_allow_html=True)
-
-                        # --- NEW: LOCAL EXPLAINABILITY SECTION ---
-                        st.markdown("---")
-                        st.markdown('<p style="text-align: center; font-weight: bold; color: #31333F;">🔍 Why this result?</p>', unsafe_allow_html=True)
-
-                        if group == "clinical":
-                            # Dynamic logic based on actual slider values
-                            increasing_factors = []
-                            decreasing_factors = []
-
-                            if age > 55: increasing_factors.append(f"Age ({age} yrs) - Older age correlates with higher risk")
-                            elif age < 40: decreasing_factors.append(f"Age ({age} yrs) - Younger age is a protective factor")
-
-                            if tumor_size > 20: increasing_factors.append(f"Tumor Size ({tumor_size}mm) - Larger size increases risk")
-                            elif tumor_size < 15: decreasing_factors.append(f"Tumor Size ({tumor_size}mm) - Small tumor size is protective")
-
-                            if stage in ["III", "IV"]: increasing_factors.append(f"Stage {stage} - Advanced stage increases risk")
-                            elif stage == "I": decreasing_factors.append(f"Stage {stage} - Early detection is highly protective")
-
-                            exp_col1, exp_col2 = st.columns(2)
-                            with exp_col1:
-                                st.markdown("**📈 Risk Increasing Factors**")
-                                if increasing_factors:
-                                    for factor in increasing_factors:
-                                        st.markdown(f"- {factor}")
-                                else:
-                                    st.write("No significant increasing factors.")
-                            with exp_col2:
-                                st.markdown("**📉 Protective Factors**")
-                                if decreasing_factors:
-                                    for factor in decreasing_factors:
-                                        st.markdown(f"- {factor}")
-                                else:
-                                    st.write("No significant protective factors.")
-                        else:
-                            # For Genomic/Integrated, we use the SHAP proxy from the tables
-                            feat_path = Path(f"reports/tables/selected_{group}_features.csv")
-                            if feat_path.exists():
-                                top_feats = pd.read_csv(feat_path).head(5)
-                                exp_col1, exp_col2 = st.columns(2)
-                                with exp_col1:
-                                    st.markdown("**📈 Risk Increasing Factors**")
-                                    increasing = top_feats[top_feats['importance'] > 0].head(2)
-                                    for idx, row in increasing.iterrows():
-                                        st.markdown(f"- {row['feature']} (Impact: {row['importance']:.3f})")
-                                with exp_col2:
-                                    st.markdown("**📉 Protective Factors**")
-                                    decreasing = top_feats.tail(2)
-                                    for idx, row in decreasing.iterrows():
-                                        st.markdown(f"- {row['feature']} (Low Impact: {row['importance']:.3f})")
-                            else:
-                                st.info("Detailed feature impact not available for this simulation.")
-                        # -------------------------------------------------
-
-                    else:
-                        st.error("Processed data not found.")
-                else:
-                    st.error("Model not found.")
-            else:
-                model = load_model(group, "classification")
-                le = load_label_encoder(group)
-                if model and le:
-                    X_processed = Path(f"data/processed/test_{group}/X.csv")
-                    if X_processed.exists():
-                        # FIX: Pick a random patient for subtype classification too
-                        full_df = pd.read_csv(X_processed)
-                        import random
-                        random_idx = random.randint(0, len(full_df) - 1)
-                        sample_df = full_df.iloc[[random_idx]]
-                        st.caption(f"Simulating Patient Case #{random_idx + 1}")
-
-                        prob = model.predict_proba(sample_df)[0]
-                        pred_idx = np.argmax(prob)
-                        subtype = le.inverse_transform([pred_idx])[0]
-
-                        st.markdown(f'<div style="text-align: center; margin-bottom: 20px;"><h3 style="color: black;">Predicted Subtype: {subtype}</h3></div>', unsafe_allow_html=True)
-
-                        # --- NEW: TREATMENT RECOMMENDATION ---
-                        # We'll use a default risk score of 1.0 for subtype-only mode, or let the user switch to survival
-                        recommendation = get_treatment_recommendation(subtype, 1.0)
-                        st.markdown(f"""
-                            <div style="background-color: #eef2ff; padding: 15px; border-radius: 10px; border-left: 5px solid #4f46e5; color: #31333f; margin-bottom: 20px;">
-                                <p style="font-weight: bold; margin-bottom: 5px;">🩺 Suggested Clinical Path:</p>
-                                <p style="font-style: italic;">{recommendation}</p>
+                            <div style="text-align: center; margin-top: 10px;">
+                                <h3 style="margin: 0; color: inherit;">{risk_tier}</h3>
+                                <p style="font-size: 1.05rem; margin-top: 6px; opacity: 0.85;"><b>{pct:.1f}th Percentile</b> within METABRIC Reference Cohort</p>
                             </div>
-                        """, unsafe_allow_html=True)
-                        # ------------------------------------
+                        </div>
+                    """, unsafe_allow_html=True)
 
-                        prob_df = pd.DataFrame({"Subtype": le.classes_, "Probability": prob}).sort_values(by="Probability", ascending=False)
-                        st.bar_chart(prob_df.set_index("Subtype"))
-                    else:
-                        st.error("Processed data not found.")
+                    st.progress(min(max(pct / 100.0, 0.0), 1.0))
+                    st.caption(f"Risk Percentile: {pct:.1f}% of reference cohort patients had a lower predicted mortality hazard.")
+
+                    st.info(
+                        "📌 **Prognostic Score Interpretation:**\n"
+                        "The risk score reflects the relative hazard ranking produced by the Random Survival Forest. "
+                        "It is a **relative risk score**, not an absolute calibrated probability of death. "
+                        "Higher scores denote shorter expected survival relative to the study population."
+                    )
+
+                    # Local comparison vs training median
+                    if group == "clinical" and is_simulation:
+                        st.markdown("#### Clinical Feature Deviation vs Cohort Median")
+                        clin_medians = get_training_feature_medians("clinical")
+                        dev_data = []
+                        if clin_medians:
+                            for feat, label in [
+                                ("age_at_diagnosis", "Age (years)"),
+                                ("tumor_size", "Tumor Size (mm)"),
+                                ("lymph_nodes_examined_positive", "Positive Lymph Nodes"),
+                                ("neoplasm_histologic_grade", "Histologic Grade"),
+                                ("tumor_stage", "Tumor Stage")
+                            ]:
+                                val = sample_df.iloc[0][feat]
+                                med = clin_medians.get(feat, np.nan)
+                                diff = val - med
+                                diff_str = f"+{diff:.1f}" if diff > 0 else (f"{diff:.1f}" if diff < 0 else "0.0")
+                                dev_data.append({
+                                    "Feature": label,
+                                    "Patient Value": f"{val:.1f}" if isinstance(val, float) else str(val),
+                                    "Cohort Median": f"{med:.1f}" if isinstance(med, float) else str(med),
+                                    "Difference": diff_str
+                                })
+                            st.dataframe(pd.DataFrame(dev_data), use_container_width=True, hide_index=True)
+
                 else:
-                    st.error("Model or Label Encoder not found.")
+                    st.error("Survival model or training reference could not be loaded.")
 
-            st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                # Molecular Subtype Classification
+                clf_model = load_model(group, "classification")
+                le = load_label_encoder(group)
+
+                if clf_model is not None and le is not None:
+                    probs = clf_model.predict_proba(sample_df)[0]
+                    pred_idx = int(np.argmax(probs))
+                    pred_subtype = le.inverse_transform([pred_idx])[0]
+                    pred_conf = float(probs[pred_idx]) * 100.0
+
+                    info = get_biological_subtype_info(pred_subtype)
+
+                    st.markdown(f"""
+                        <div class="research-card" style="border-top: 5px solid #4f46e5;">
+                            <div class="custom-metric">
+                                <p class="metric-label">Predicted Molecular Subtype</p>
+                                <p class="metric-value">{pred_subtype}</p>
+                            </div>
+                            <div style="text-align: center; margin-top: 5px;">
+                                <p style="font-size: 1.1rem; margin: 0; opacity: 0.85;"><b>Confidence: {pred_conf:.1f}%</b></p>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown("#### Probability Distribution Across Subtypes")
+                    prob_df = pd.DataFrame({
+                        "Subtype": le.classes_,
+                        "Probability": probs
+                    }).sort_values(by="Probability", ascending=True)
+
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    bars = ax.barh(prob_df["Subtype"], prob_df["Probability"], color="#4f46e5")
+                    ax.set_xlim(0, 1.05)
+                    ax.set_xlabel("Predicted Probability")
+                    ax.grid(axis='x', alpha=0.3)
+                    for bar in bars:
+                        w = bar.get_width()
+                        if w > 0.02:
+                            ax.text(w + 0.01, bar.get_y() + bar.get_height()/2, f"{w:.1%}", va='center', fontsize=9)
+                    st.pyplot(fig)
+                    plt.close(fig)
+
+                    st.markdown(f"#### Biological Profile: **{info['name']}**")
+                    st.markdown(f"- **Key Characteristics:** {info['biology']}")
+                    st.markdown(f"- **Prognostic Context:** {info['prognosis']}")
+                    st.markdown(f"- **Biomarker Profile:** `{info['biomarkers']}`")
+
+                else:
+                    st.error("Classification model or label encoder not found.")
+
+            # Biomarker context expander
+            biomarker_path = Path(f"reports/tables/selected_{group}_features.csv")
+            if biomarker_path.exists():
+                with st.expander(f"📚 View Top Global Predictive Features ({group.capitalize()} Arm)"):
+                    top_f = pd.read_csv(biomarker_path).head(10)
+                    st.dataframe(top_f, use_container_width=True, hide_index=True)
+                    st.caption("Feature importances derived from SHAP global analysis on the METABRIC cohort.")
 
 # --- Page: Biological Insights ---
 elif page == "Biological Insights":
