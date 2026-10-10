@@ -1,0 +1,135 @@
+stages:
+  validate:
+    cmd: python -m breast_cancer_ml.data.validate
+    deps:
+      - data/raw/METABRIC_RNA_Mutation.csv
+    outs:
+      - reports/data_dictionary/data_dictionary.csv
+      - reports/data_dictionary/data_quality.json
+    params:
+      - data.raw_path
+
+  leakage:
+    cmd: python -m breast_cancer_ml.data.leakage
+    deps:
+      - data/raw/METABRIC_RNA_Mutation.csv
+    outs:
+      - reports/data_dictionary/leakage_report.json
+    params:
+      - targets
+
+  preprocess:
+    cmd: python -m src.breast_cancer_ml.data.preprocess
+    deps:
+      - data/raw/METABRIC_RNA_Mutation.csv
+    outs:
+      - data/processed/train.csv
+      - data/processed/test.csv
+    params:
+      - features.max_missing_fraction
+      - split.test_size
+      - split.random_state
+
+  build_features:
+    cmd: python -m src.breast_cancer_ml.features.build
+    deps:
+      - data/processed/train.csv
+      - data/processed/test.csv
+    outs:
+      - data/processed/train_clinical
+      - data/processed/test_clinical
+      - data/processed/train_genomic
+      - data/processed/test_genomic
+      - data/processed/train_integrated
+      - data/processed/test_integrated
+    params:
+      - targets
+
+  train_survival:
+    cmd: python -m src.breast_cancer_ml.models.survival integrated
+    deps:
+      - data/processed/train_integrated
+      - data/processed/test_integrated
+    outs:
+      - models/survival/integrated
+    params:
+      - survival.models
+
+  train_survival_clinical:
+    cmd: python -m src.breast_cancer_ml.models.survival clinical
+    deps:
+      - data/processed/train_clinical
+      - data/processed/test_clinical
+    outs:
+      - models/survival/clinical
+    params:
+      - survival.models
+
+  train_survival_genomic:
+    cmd: python -m src.breast_cancer_ml.models.survival genomic
+    deps:
+      - data/processed/train_genomic
+      - data/processed/test_genomic
+    outs:
+      - models/survival/genomic
+    params:
+      - survival.models
+
+  train_classification:
+    cmd: python -m src.breast_cancer_ml.models.classification integrated
+    deps:
+      - data/processed/train_integrated
+      - data/processed/test_integrated
+    outs:
+      - models/classification/integrated
+    params:
+      - classification.models
+
+  train_classification_clinical:
+    cmd: python -m src.breast_cancer_ml.models.classification clinical
+    deps:
+      - data/processed/train_clinical
+      - data/processed/test_clinical
+    outs:
+      - models/classification/clinical
+    params:
+      - classification.models
+
+  train_classification_genomic:
+    cmd: python -m src.breast_cancer_ml.models.classification genomic
+    deps:
+      - data/processed/train_genomic
+      - data/processed/test_genomic
+    outs:
+      - models/classification/genomic
+    params:
+      - classification.models
+
+  evaluate:
+    cmd: python -m src.breast_cancer_ml.evaluation.survival_metrics
+    deps:
+      - models/survival/integrated
+      - models/survival/clinical
+      - models/survival/genomic
+      - reports/metrics/integrated_survival.json
+    outs:
+      - reports/metrics/survival_comparison.csv
+      - reports/figures/integrated_km.png
+      - reports/figures/clinical_km.png
+      - reports/figures/genomic_km.png
+
+  explain:
+    cmd: python -m src.breast_cancer_ml.explainability.shap_analysis clinical && python -m src.breast_cancer_ml.explainability.shap_analysis genomic && python -m src.breast_cancer_ml.explainability.shap_analysis integrated
+    deps:
+      - models/survival/integrated
+      - models/survival/clinical
+      - models/survival/genomic
+    outs:
+      - reports/tables/selected_integrated_features.csv
+      - reports/figures/integrated_shap_summary.png
+      - reports/tables/selected_clinical_features.csv
+      - reports/figures/clinical_shap_summary.png
+      - reports/tables/selected_genomic_features.csv
+      - reports/figures/genomic_shap_summary.png
+
+

@@ -1,0 +1,20 @@
+# Dependencies for Breast Cancer MLOps Project
+pandas
+numpy
+scipy
+scikit-learn
+xgboost
+scikit-survival
+lifelines
+shap
+streamlit
+matplotlib
+seaborn
+pyyaml
+joblib
+pytest
+ruff
+black
+mypy
+dvc
+mlflow

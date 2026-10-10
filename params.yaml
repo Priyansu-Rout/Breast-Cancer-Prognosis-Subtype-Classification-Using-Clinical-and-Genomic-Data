@@ -1,0 +1,32 @@
+# Parameters used by DVC stages
+data:
+  raw_path: data/raw/METABRIC_RNA_Mutation.csv
+  processed_path: data/processed
+  data_dictionary_path: reports/data_dictionary
+
+split:
+  test_size: 0.20
+  random_state: 42
+
+cv:
+  folds: 5
+
+targets:
+  survival_time: overall_survival_months
+  survival_event: overall_survival
+  subtype: pam50_+_claudin-low_subtype
+
+features:
+  max_missing_fraction: 0.30
+  variance_threshold: 0.0
+
+survival:
+  models:
+    - cox
+    - random_survival_forest
+
+classification:
+  models:
+    - logistic_regression
+    - random_forest
+    - xgboost

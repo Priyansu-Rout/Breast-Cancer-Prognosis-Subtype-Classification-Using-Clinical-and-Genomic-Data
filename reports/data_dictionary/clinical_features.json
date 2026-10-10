@@ -1,0 +1,22 @@
+[
+    "age_at_diagnosis",
+    "type_of_breast_surgery",
+    "cancer_type",
+    "cancer_type_detailed",
+    "cellularity",
+    "chemotherapy",
+    "er_status_measured_by_ihc",
+    "er_status",
+    "neoplasm_histologic_grade",
+    "her2_status_measured_by_snp6",
+    "her2_status",
+    "hormone_therapy",
+    "inferred_menopausal_state",
+    "primary_tumor_laterality",
+    "lymph_nodes_examined_positive",
+    "radio_therapy",
+    "tumor_size",
+    "tumor_stage",
+    "magea8",
+    "magea8_mut"
+]

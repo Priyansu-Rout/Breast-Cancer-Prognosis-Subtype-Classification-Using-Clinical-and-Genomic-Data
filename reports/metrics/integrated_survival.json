@@ -1,0 +1,10 @@
+{
+    "cox": {
+        "cv_cindex": 0.6531278608999145,
+        "test_cindex": 0.6690729062949441
+    },
+    "random_survival_forest": {
+        "cv_cindex": 0.7044715913942454,
+        "test_cindex": 0.6972010178117048
+    }
+}
