@@ -195,22 +195,50 @@ stages:
       md5: 4698cd53a1d78c456d3c0cf5eab43c2b
       size: 413
   explain:
-    cmd: python -m src.breast_cancer_ml.explainability.shap_analysis
+    cmd: python -m src.breast_cancer_ml.explainability.shap_analysis clinical &&
+      python -m src.breast_cancer_ml.explainability.shap_analysis genomic && 
+      python -m src.breast_cancer_ml.explainability.shap_analysis integrated
     deps:
+    - path: models/survival/clinical
+      hash: md5
+      md5: f914e0393a417422627fcf837b25099b.dir
+      size: 2868471
+      nfiles: 2
+    - path: models/survival/genomic
+      hash: md5
+      md5: 053a104fced730ad5600902d153e8a8a.dir
+      size: 2226183
+      nfiles: 2
     - path: models/survival/integrated
       hash: md5
       md5: c70681b9bc380cbf2ae2c30f151bd497.dir
       size: 2215199
       nfiles: 2
     outs:
+    - path: reports/figures/clinical_shap_summary.png
+      hash: md5
+      md5: 0f73898e241e406b3684b9734e832b1a
+      size: 66720
+    - path: reports/figures/genomic_shap_summary.png
+      hash: md5
+      md5: 89c47d1059ab6b3829b2ae79a93b62d9
+      size: 102395
     - path: reports/figures/integrated_shap_summary.png
       hash: md5
-      md5: 08cdf5567c6826cde8677c16c068f520
-      size: 97537
+      md5: 39f6b067104af41572a81a47737093bd
+      size: 98343
+    - path: reports/tables/selected_clinical_features.csv
+      hash: md5
+      md5: f7d1b70174a42be9c2c6fb840574f3d1
+      size: 359
+    - path: reports/tables/selected_genomic_features.csv
+      hash: md5
+      md5: 3ada65be0c1a32f8b9ce34e4697d17a2
+      size: 1483
     - path: reports/tables/selected_integrated_features.csv
       hash: md5
-      md5: 0d9923333da49688db8372761ed093a7
-      size: 1527
+      md5: 349baf3908b6e2f82223215b29f5e2d8
+      size: 1523
   train_survival_clinical:
     cmd: python -m src.breast_cancer_ml.models.survival clinical
     deps:
