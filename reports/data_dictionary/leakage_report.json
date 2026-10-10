@@ -1,0 +1,22 @@
+[
+    {
+        "column": "death_from_cancer",
+        "reason": "Survival-derived or outcome-related variable",
+        "excluded_for": "survival_prediction"
+    },
+    {
+        "column": "tumor_other_histologic_subtype",
+        "reason": "Molecular subtype proxy or cluster label",
+        "excluded_for": "subtype_classification"
+    },
+    {
+        "column": "integrative_cluster",
+        "reason": "Molecular subtype proxy or cluster label",
+        "excluded_for": "subtype_classification"
+    },
+    {
+        "column": "3-gene_classifier_subtype",
+        "reason": "Molecular subtype proxy or cluster label",
+        "excluded_for": "subtype_classification"
+    }
+]
