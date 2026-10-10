@@ -13,12 +13,12 @@ stages:
     outs:
     - path: reports/data_dictionary/data_dictionary.csv
       hash: md5
-      md5: e8dbc76313a51c95128d712064a5dbac
-      size: 15164
+      md5: 4c5c325ffc448eccb03af0c3e3526e58
+      size: 14470
     - path: reports/data_dictionary/data_quality.json
       hash: md5
-      md5: 29a93d8b89d4b14028c191cb60a5bc1b
-      size: 36521
+      md5: 13615a25028f1446109cb9865b597596
+      size: 35119
   leakage:
     cmd: python -m breast_cancer_ml.data.leakage
     deps:
@@ -35,8 +35,8 @@ stages:
     outs:
     - path: reports/data_dictionary/leakage_report.json
       hash: md5
-      md5: d19e0c7f207aa829f9da7f9a0f38b33a
-      size: 699
+      md5: eb10774f240fcce8ed0b9283eda097f4
+      size: 678
   preprocess:
     cmd: python -m src.breast_cancer_ml.data.preprocess
     deps:
@@ -52,23 +52,23 @@ stages:
     outs:
     - path: data/processed/test.csv
       hash: md5
-      md5: 891c3b3ab6777af0638795ac9074c59f
-      size: 19387538
+      md5: 7fcd4945315388224f67e8dff15c02db
+      size: 19387156
     - path: data/processed/train.csv
       hash: md5
-      md5: c4f55345569f7b7b840543639cf29bdf
-      size: 77073599
+      md5: c552c6d20092a24f95293477f268467f
+      size: 77072075
   build_features:
     cmd: python -m src.breast_cancer_ml.features.build
     deps:
     - path: data/processed/test.csv
       hash: md5
-      md5: 891c3b3ab6777af0638795ac9074c59f
-      size: 19387538
+      md5: 7fcd4945315388224f67e8dff15c02db
+      size: 19387156
     - path: data/processed/train.csv
       hash: md5
-      md5: c4f55345569f7b7b840543639cf29bdf
-      size: 77073599
+      md5: c552c6d20092a24f95293477f268467f
+      size: 77072075
     params:
       params.yaml:
         targets:
@@ -78,46 +78,46 @@ stages:
     outs:
     - path: data/processed/test_clinical
       hash: md5
-      md5: 5f982422225c171b02b008cfb59ad2d9.dir
-      size: 22299
+      md5: 54551e46f2e891413ff8b9442762be90.dir
+      size: 21153
       nfiles: 3
     - path: data/processed/test_genomic
       hash: md5
-      md5: 9745384f25c7dcae7356fc43b57edf4f.dir
-      size: 1431769
+      md5: 9d7a8cb1ed846380d2d058cae63c0ac3.dir
+      size: 1430623
       nfiles: 3
     - path: data/processed/test_integrated
       hash: md5
-      md5: 025cecaf59dac96ebcf2080931d70eff.dir
-      size: 1445864
+      md5: a0f70f188538d99cac807350c2f46479.dir
+      size: 1444718
       nfiles: 3
     - path: data/processed/train_clinical
       hash: md5
-      md5: 609cb9acd1acff757c55235cec96c619.dir
-      size: 88642
+      md5: 2e739c7ffa2be32434a9aa98c1463edb.dir
+      size: 84070
       nfiles: 3
     - path: data/processed/train_genomic
       hash: md5
-      md5: dabe9c0593d69010793c13194ba165ff.dir
-      size: 5718781
+      md5: 243997372d9778a2976f85cc42fc77cf.dir
+      size: 5714209
       nfiles: 3
     - path: data/processed/train_integrated
       hash: md5
-      md5: 782a58adf29bd42300e6c4a7fb36b39f.dir
-      size: 5774748
+      md5: e942465690a47500638003ccbd0e2607.dir
+      size: 5770176
       nfiles: 3
   train_survival:
     cmd: python -m src.breast_cancer_ml.models.survival integrated
     deps:
     - path: data/processed/test_integrated
       hash: md5
-      md5: 025cecaf59dac96ebcf2080931d70eff.dir
-      size: 1445864
+      md5: a0f70f188538d99cac807350c2f46479.dir
+      size: 1444718
       nfiles: 3
     - path: data/processed/train_integrated
       hash: md5
-      md5: 782a58adf29bd42300e6c4a7fb36b39f.dir
-      size: 5774748
+      md5: e942465690a47500638003ccbd0e2607.dir
+      size: 5770176
       nfiles: 3
     params:
       params.yaml:
@@ -127,21 +127,21 @@ stages:
     outs:
     - path: models/survival/integrated
       hash: md5
-      md5: c70681b9bc380cbf2ae2c30f151bd497.dir
-      size: 2215199
+      md5: 2896c142a9f2522ab042fb5473875e80.dir
+      size: 2215231
       nfiles: 2
   train_classification:
     cmd: python -m src.breast_cancer_ml.models.classification integrated
     deps:
     - path: data/processed/test_integrated
       hash: md5
-      md5: 025cecaf59dac96ebcf2080931d70eff.dir
-      size: 1445864
+      md5: a0f70f188538d99cac807350c2f46479.dir
+      size: 1444718
       nfiles: 3
     - path: data/processed/train_integrated
       hash: md5
-      md5: 782a58adf29bd42300e6c4a7fb36b39f.dir
-      size: 5774748
+      md5: e942465690a47500638003ccbd0e2607.dir
+      size: 5770176
       nfiles: 3
     params:
       params.yaml:
@@ -152,48 +152,48 @@ stages:
     outs:
     - path: models/classification/integrated
       hash: md5
-      md5: 3a4ee5784596418cffaeb1c60ab7f123.dir
-      size: 6545428
+      md5: f68e4515e6da3f52d7e9817a610f8e11.dir
+      size: 6546597
       nfiles: 4
   evaluate:
     cmd: python -m src.breast_cancer_ml.evaluation.survival_metrics
     deps:
     - path: models/survival/clinical
       hash: md5
-      md5: f914e0393a417422627fcf837b25099b.dir
-      size: 2868471
+      md5: 84ac40d1aafd6fd3b65f7a30a3ac2801.dir
+      size: 2868503
       nfiles: 2
     - path: models/survival/genomic
       hash: md5
-      md5: 053a104fced730ad5600902d153e8a8a.dir
-      size: 2226183
+      md5: 03ead5fc8ddab955ac168ad935ddb7fb.dir
+      size: 2226215
       nfiles: 2
     - path: models/survival/integrated
       hash: md5
-      md5: c70681b9bc380cbf2ae2c30f151bd497.dir
-      size: 2215199
+      md5: 2896c142a9f2522ab042fb5473875e80.dir
+      size: 2215231
       nfiles: 2
     - path: reports/metrics/integrated_survival.json
       hash: md5
-      md5: 767f0961a930332b161dda437aa43b3c
-      size: 236
+      md5: eac30b305f8c99736cb5dbe23d9e55ec
+      size: 227
     outs:
     - path: reports/figures/clinical_km.png
       hash: md5
-      md5: 9ca5faa3feac825d6abd6e649492f7cf
-      size: 24065
+      md5: c66d6da5a274f317908d03f2b01732d9
+      size: 26881
     - path: reports/figures/genomic_km.png
       hash: md5
-      md5: d14ea057f577830f3680a1ff9f83e298
-      size: 24366
+      md5: 955e3fcd0cf30f1d9e364d92cea19a76
+      size: 27321
     - path: reports/figures/integrated_km.png
       hash: md5
-      md5: 6d742b0768cf8f30fb0989af12494221
-      size: 24232
+      md5: 8ed26889b14a32d639aa2f1b0709a147
+      size: 27121
     - path: reports/metrics/survival_comparison.csv
       hash: md5
-      md5: 4698cd53a1d78c456d3c0cf5eab43c2b
-      size: 413
+      md5: fb1e5eded3905b727062bcc95c85a5ce
+      size: 406
   explain:
     cmd: python -m src.breast_cancer_ml.explainability.shap_analysis clinical &&
       python -m src.breast_cancer_ml.explainability.shap_analysis genomic && 
@@ -201,56 +201,56 @@ stages:
     deps:
     - path: models/survival/clinical
       hash: md5
-      md5: f914e0393a417422627fcf837b25099b.dir
-      size: 2868471
+      md5: 84ac40d1aafd6fd3b65f7a30a3ac2801.dir
+      size: 2868503
       nfiles: 2
     - path: models/survival/genomic
       hash: md5
-      md5: 053a104fced730ad5600902d153e8a8a.dir
-      size: 2226183
+      md5: 03ead5fc8ddab955ac168ad935ddb7fb.dir
+      size: 2226215
       nfiles: 2
     - path: models/survival/integrated
       hash: md5
-      md5: c70681b9bc380cbf2ae2c30f151bd497.dir
-      size: 2215199
+      md5: 2896c142a9f2522ab042fb5473875e80.dir
+      size: 2215231
       nfiles: 2
     outs:
     - path: reports/figures/clinical_shap_summary.png
       hash: md5
-      md5: 0f73898e241e406b3684b9734e832b1a
-      size: 66720
+      md5: e8a3a49ef6cc5071f4b6128a84450bee
+      size: 73648
     - path: reports/figures/genomic_shap_summary.png
       hash: md5
-      md5: 89c47d1059ab6b3829b2ae79a93b62d9
-      size: 102395
+      md5: 2cdeab78918ff47eb62723237c750116
+      size: 105928
     - path: reports/figures/integrated_shap_summary.png
       hash: md5
-      md5: 39f6b067104af41572a81a47737093bd
-      size: 98343
+      md5: ae46ef9be9714a11c7fc773a39205bb6
+      size: 107636
     - path: reports/tables/selected_clinical_features.csv
       hash: md5
-      md5: f7d1b70174a42be9c2c6fb840574f3d1
-      size: 359
+      md5: 853c661484d15f7fa0b2c818044aa4e6
+      size: 351
     - path: reports/tables/selected_genomic_features.csv
       hash: md5
-      md5: 3ada65be0c1a32f8b9ce34e4697d17a2
-      size: 1483
+      md5: 09d5e99b30c6cb13745068c582ce849b
+      size: 1432
     - path: reports/tables/selected_integrated_features.csv
       hash: md5
-      md5: 349baf3908b6e2f82223215b29f5e2d8
-      size: 1523
+      md5: a1e0cf40e7a0259c7770756d7e117c42
+      size: 1478
   train_survival_clinical:
     cmd: python -m src.breast_cancer_ml.models.survival clinical
     deps:
     - path: data/processed/test_clinical
       hash: md5
-      md5: 5f982422225c171b02b008cfb59ad2d9.dir
-      size: 22299
+      md5: 54551e46f2e891413ff8b9442762be90.dir
+      size: 21153
       nfiles: 3
     - path: data/processed/train_clinical
       hash: md5
-      md5: 609cb9acd1acff757c55235cec96c619.dir
-      size: 88642
+      md5: 2e739c7ffa2be32434a9aa98c1463edb.dir
+      size: 84070
       nfiles: 3
     params:
       params.yaml:
@@ -260,21 +260,21 @@ stages:
     outs:
     - path: models/survival/clinical
       hash: md5
-      md5: f914e0393a417422627fcf837b25099b.dir
-      size: 2868471
+      md5: 84ac40d1aafd6fd3b65f7a30a3ac2801.dir
+      size: 2868503
       nfiles: 2
   train_survival_genomic:
     cmd: python -m src.breast_cancer_ml.models.survival genomic
     deps:
     - path: data/processed/test_genomic
       hash: md5
-      md5: 9745384f25c7dcae7356fc43b57edf4f.dir
-      size: 1431769
+      md5: 9d7a8cb1ed846380d2d058cae63c0ac3.dir
+      size: 1430623
       nfiles: 3
     - path: data/processed/train_genomic
       hash: md5
-      md5: dabe9c0593d69010793c13194ba165ff.dir
-      size: 5718781
+      md5: 243997372d9778a2976f85cc42fc77cf.dir
+      size: 5714209
       nfiles: 3
     params:
       params.yaml:
@@ -284,21 +284,21 @@ stages:
     outs:
     - path: models/survival/genomic
       hash: md5
-      md5: 053a104fced730ad5600902d153e8a8a.dir
-      size: 2226183
+      md5: 03ead5fc8ddab955ac168ad935ddb7fb.dir
+      size: 2226215
       nfiles: 2
   train_classification_clinical:
     cmd: python -m src.breast_cancer_ml.models.classification clinical
     deps:
     - path: data/processed/test_clinical
       hash: md5
-      md5: 5f982422225c171b02b008cfb59ad2d9.dir
-      size: 22299
+      md5: 54551e46f2e891413ff8b9442762be90.dir
+      size: 21153
       nfiles: 3
     - path: data/processed/train_clinical
       hash: md5
-      md5: 609cb9acd1acff757c55235cec96c619.dir
-      size: 88642
+      md5: 2e739c7ffa2be32434a9aa98c1463edb.dir
+      size: 84070
       nfiles: 3
     params:
       params.yaml:
@@ -309,21 +309,21 @@ stages:
     outs:
     - path: models/classification/clinical
       hash: md5
-      md5: 032f16aa631e94a7e28c06e7d4983f64.dir
-      size: 16033688
+      md5: 7ac19387c640bbc6d7748936a03dd34b.dir
+      size: 16034857
       nfiles: 4
   train_classification_genomic:
     cmd: python -m src.breast_cancer_ml.models.classification genomic
     deps:
     - path: data/processed/test_genomic
       hash: md5
-      md5: 9745384f25c7dcae7356fc43b57edf4f.dir
-      size: 1431769
+      md5: 9d7a8cb1ed846380d2d058cae63c0ac3.dir
+      size: 1430623
       nfiles: 3
     - path: data/processed/train_genomic
       hash: md5
-      md5: dabe9c0593d69010793c13194ba165ff.dir
-      size: 5718781
+      md5: 243997372d9778a2976f85cc42fc77cf.dir
+      size: 5714209
       nfiles: 3
     params:
       params.yaml:
@@ -334,6 +334,6 @@ stages:
     outs:
     - path: models/classification/genomic
       hash: md5
-      md5: b060af2aa7ff29aef77e3abd3456a896.dir
-      size: 6594911
+      md5: 2bcd677649a4bd4c2503155c4deafa05.dir
+      size: 6596080
       nfiles: 4
