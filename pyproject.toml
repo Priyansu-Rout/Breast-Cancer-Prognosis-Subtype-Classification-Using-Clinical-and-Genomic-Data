@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Priyansu-Rout", email = "priyansurout369@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "black>=26.10.0",
     "dvc>=3.67.1",
