@@ -1,17 +1,17 @@
 # Integrated Clinical and Genomic Machine Learning for Breast Cancer Prognosis and Molecular Subtype Classification
 
-## 🎗️ Project Overview
+## Project Overview
 This project implements an industry-grade MLOps pipeline to investigate whether integrating clinical characteristics with molecular gene-expression and mutation information improves breast-cancer prognosis and molecular subtype classification.
 
 **Research Question:**
 Does integrating clinical characteristics with molecular gene-expression and mutation information improve breast-cancer prognosis and molecular subtype classification compared with using clinical or genomic information alone?
 
-### ⚠️ Medical Disclaimer
+### Medical Disclaimer
 This project is intended for research and educational purposes only. It is not a medical diagnostic tool and should not be used to make clinical or treatment decisions.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 ```mermaid
 flowchart TD
     A[METABRIC Dataset] --> B[DVC Data Versioning]
