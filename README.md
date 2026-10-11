@@ -38,7 +38,7 @@ flowchart TD
     L --> O[Streamlit Dashboard]
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Installation
 ```bash
@@ -62,7 +62,7 @@ dvc repro
 streamlit run app/streamlit_app.py
 ```
 
-## 📊 Project Structure
+## Project Structure
 - `data/`: Raw, interim, and processed datasets (versioned by DVC).
 - `src/breast_cancer_ml/`: Core Python source code.
 - `configs/`: YAML configuration files.
