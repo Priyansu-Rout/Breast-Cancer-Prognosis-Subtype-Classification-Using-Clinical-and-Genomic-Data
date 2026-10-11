@@ -70,7 +70,7 @@ streamlit run app/streamlit_app.py
 - `reports/`: Figures, metrics, and data dictionaries.
 - `app/`: Streamlit research dashboard.
 
-## 🧪 Tech Stack
+## Tech Stack
 - **Language**: Python 3.11+
 - **ML**: scikit-learn, XGBoost, scikit-survival, lifelines.
 - **MLOps**: DVC, MLflow.
