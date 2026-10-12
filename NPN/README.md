@@ -241,7 +241,7 @@ commands. To make the repository reproducible:
 Do not assume that a fresh environment will reproduce the reported
 numbers until the complete workflow has been rerun.
 
-## Streamlit DashBoard
+## Streamlit Dashboard
 https://vr7ta6xgaqrkwhznaxsmdn.streamlit.app
 
 ## How to cite this project
